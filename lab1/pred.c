@@ -4,7 +4,7 @@
 #include <math.h>
 #include <string.h>
 
-// === ПРЕОБРАЗОВАНИЕ ЧИСЕЛ ===
+// ============ ПРЕОБРАЗОВАНИЕ ЧИСЕЛ ============
 
 // Для 32 бит
 typedef union {
@@ -25,38 +25,38 @@ typedef union {
 } un128;
 
 // Получение машинного представления 32 бит
-unsigned int get32(double x) {
+unsigned int get32(long double x) {
     un32 a;
     a.f = (float)x;
     return a.u;
 }
 
 // Получение машинного представления 64 бит
-unsigned long long get64(double x) {
+unsigned long long get64(long double x) {
     un64 a;
-    a.d = x;
+    a.d = (double)x;
     return a.u;
 }
 
 // Получение машинного представления 128 бит
-unsigned __int128 get128(double x) {
+unsigned __int128 get128(long double x) {
     un128 a;
-    a.ld = (long double)x;
+    a.ld = x;
     return a.u;
 }
 
 // Обратное преобразование из 32 бит
-double back32(unsigned int x) {
+long double back32(unsigned int x) {
     un32 a;
     a.u = x;
-    return a.f;
+    return (long double)a.f;
 }
 
 // Обратное преобразование из 64 бит
-double back64(unsigned long long x) {
+long double back64(unsigned long long x) {
     un64 a;
     a.u = x;
-    return a.d;
+    return (long double)a.d;
 }
 
 // Обратное преобразование из 128 бит
@@ -76,12 +76,12 @@ void print128(unsigned __int128 x, char *buf) {
 // ============ ГЕНЕРАЦИЯ ЧИСЕЛ ============
 
 // Случайное число от a до b с P знаками после запятой
-double rand_num(double a, double b, int p) {
-    double r = a + (double)rand() / RAND_MAX * (b - a);
+long double rand_num(long double a, long double b, int p) {
+    long double r = a + (long double)rand() / RAND_MAX * (b - a);
     
     // Округление до P знаков
-    double mult = pow(10, p);
-    r = round(r * mult) / mult;
+    long double mult = powl(10, p);
+    r = roundl(r * mult) / mult;
     
     return r;
 }
@@ -89,7 +89,7 @@ double rand_num(double a, double b, int p) {
 // ============ ЗАПИСЬ В ФАЙЛЫ ============
 
 // Запись таблицы 1 (только числа)
-void write_table1(const char *fname, double *nums, int k, int v) {
+void write_table1(const char *fname, long double *nums, int k, int v) {
     FILE *f = fopen(fname, "w");
     if (!f) return;
     
@@ -99,14 +99,15 @@ void write_table1(const char *fname, double *nums, int k, int v) {
     fprintf(f, "-\t------------------\n");
     
     for (int i = 0; i < k; i++) {
-        fprintf(f, "%d\t%.10f\n", i + 1, nums[i]);
+        // Для печати long double используем %Lf
+        fprintf(f, "%d\t%.10Lf\n", i + 1, nums[i]);
     }
     
     fclose(f);
 }
 
 // Запись таблицы 2 (число, машинное представление, ошибка)
-void write_table2(const char *fname, double *nums, int k, int v, int bits) {
+void write_table2(const char *fname, long double *nums, int k, int v, int bits) {
     FILE *f = fopen(fname, "w");
     if (!f) return;
     
@@ -116,51 +117,53 @@ void write_table2(const char *fname, double *nums, int k, int v, int bits) {
     fprintf(f, "-\t------------------\t--------------------\t------\n");
     
     for (int i = 0; i < k; i++) {
-        double err = 0.0;
+        long double err = 0.0;
         char mach[100] = "";
         
         if (bits == 32) {
             unsigned int m = get32(nums[i]);
-            double back = back32(m);
-            err = fabs(nums[i] - back);
+            long double back = back32(m);
+            err = fabsl(nums[i] - back);
             sprintf(mach, "0x%08X", m);
         }
         else if (bits == 64) {
             unsigned long long m = get64(nums[i]);
-            double back = back64(m);
-            err = fabs(nums[i] - back);
+            long double back = back64(m);
+            err = fabsl(nums[i] - back);
             sprintf(mach, "0x%016llX", m);
         }
         else if (bits == 128) {
             unsigned __int128 m = get128(nums[i]);
             long double back = back128(m);
-            err = fabs(nums[i] - (double)back);
+            err = fabsl(nums[i] - back);
             print128(m, mach);
         }
         
-        fprintf(f, "%d\t%.10f\t%s\t%e\n", i + 1, nums[i], mach, err);
+        fprintf(f, "%d\t%.10Lf\t%s\t%Le\n", i + 1, nums[i], mach, err);
     }
     
     fclose(f);
 }
+
+// ============ ГЛАВНАЯ ФУНКЦИЯ ============
 
 int main() {
     // Для случайных чисел
     srand(time(NULL));
     
     // Входные данные
-    int N = 20;        // кол-во студентов
-    int K = 5;         // кол-во заданий
-    int bits = 128;    // разрядность (32, 64, 128)
-    double a = -1000.0;  // начало диапазона
-    double b = 1000.0;   // конец диапазона
-    int P = 9;         // знаков после запятой
+    int N = 20;         // кол-во студентов
+    int K = 5;          // кол-во заданий
+    int bits = 128;     // разрядность (32, 64, 128)
+    long double a = -10.0L;  // начало диапазона
+    long double b = 10.0L;   // конец диапазона
+    int P = 3;          // знаков после запятой
     
     printf("Генерация заданий...\n");
     printf("Студентов: %d\n", N);
     printf("Заданий на студента: %d\n", K);
     printf("Разрядность: %d бит\n", bits);
-    printf("Диапазон: [%f, %f]\n", a, b);
+    printf("Диапазон: [%Lf, %Lf]\n", a, b);
     printf("Знаков после запятой: %d\n", P);
     printf("\n");
     
@@ -171,7 +174,7 @@ int main() {
     // Для каждого студента
     for (int student = 1; student <= N; student++) {
         // Генерируем K случайных чисел
-        double nums[100];
+        long double nums[100];
         
         for (int i = 0; i < K; i++) {
             nums[i] = rand_num(a, b, P);
